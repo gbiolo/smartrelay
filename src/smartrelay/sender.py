@@ -34,23 +34,24 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email.encoders import encode_base64
-from . import Email
-from exceptions import ArgumentException, AttachmentException
+from .email import Email
+from .exceptions import ArgumentException, AttachmentException
 
 
 class Sender:
     """Class representing an email sender using the SMTP protocol."""
 
-    def __init__(self):
-        """Sender object simple constructor."""
+    def __init__(self, server_address=None):
+        """Sender object constructor accepting a server address."""
         self.conn = None
         self.mail_pool = []
-
-    def __call__(self, server_address):
-        """Magic method to make the class callable."""
-        self.conn = None
-        self.mail_pool = []
-        self.server_address = server_address
+        if server_address:
+            if type(server_address) is str:
+                self.server_address = server_address
+            else:
+                raise ArgumentException("Wrong format for server address in sender constructor")
+        else:
+            self.server_address = ""
 
     def set_server(self, server_address):
         """Set server address value."""
@@ -63,11 +64,11 @@ class Sender:
         if sender:
             new_mail.set_sender(sender)
         else:
-            raise ArgumentException("No SENDER address indicated")
+            raise ArgumentException("No sender address indicated")
         if to:
             new_mail.set_recipients(to=to)
         else:
-            raise ArgumentException("Cannot send email to an empty TO recipient list")
+            raise ArgumentException("Cannot send email to an empty recipient list")
         if cc:
             new_mail.set_recipients(cc=cc)
         if bcc:
@@ -95,11 +96,11 @@ class Sender:
         """Create the connection to the SMTP server."""
         try:
             self.conn = smtplib.SMTP(self.server_address)
-            if self.conn:
-                return True
-            else:
-                return False
         except Exception:
+            return False
+        if self.conn:
+            return True
+        else:
             return False
 
     def send(self):
@@ -112,12 +113,13 @@ class Sender:
                 msg["Cc"] = ", ".join(mail.recipients["cc"])
                 msg["Bcc"] = ", ".join(mail.recipients["bcc"])
                 msg["From"] = mail.sender
-                # In base alla tipologia di contenuto viene scelto il MIME
-                if re.match("<html>(.+)</html>$", mail.body):
+                # MIME type is based on the message body; if it starts with the
+                # html tag (HTML, XHTML) the MIME type will be "html", "plain"
+                # otherwise
+                if re.match("<html[^>]*>", mail.body):
                     msg.attach(MIMEText(mail.body, "html"))
                 else:
                     msg.attach(MIMEText(mail.body, "plain"))
-                # Se sono presenti allegati vengono aggiunti alla mail
                 for attachment in mail.attachments:
                     if not os.path.exists(attachment):
                         raise AttachmentException("Attachment " + attachment +

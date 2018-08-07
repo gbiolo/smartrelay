@@ -29,7 +29,7 @@ License:
 
 import os
 import re
-from . import ArgumentException, AttachmentException
+from .exceptions import ArgumentException, AttachmentException
 
 
 class Email:
