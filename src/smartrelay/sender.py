@@ -139,4 +139,6 @@ class Sender:
                     self.conn.sendmail(mail.sender, recipients, msg.as_string())
                 except Exception as e:
                     raise e
-                return True
+            return True
+        else:
+            return False
